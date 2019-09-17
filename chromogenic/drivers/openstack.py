@@ -26,11 +26,11 @@ from pytz import datetime
 from rtwo.models.provider import OSProvider
 from rtwo.models.identity import OSIdentity
 from rtwo.driver import OSDriver
-from rtwo.drivers.common import (
-    _connect_to_keystone_v3, _connect_to_glance_by_auth, _connect_to_nova_by_auth,
-    _connect_to_keystone, _connect_to_nova,
-    _connect_to_glance, find
-)
+from rtwo.drivers.common import (_connect_to_keystone_v3,
+                                 _connect_to_glance_by_auth,
+                                 _connect_to_nova_by_auth,
+                                 _connect_to_keystone, _connect_to_nova,
+                                 _connect_to_glance, find)
 
 from chromogenic.drivers.base import BaseDriver
 from chromogenic.common import run_command, wildcard_remove
@@ -42,6 +42,7 @@ from glanceclient.common import progressbar
 from glanceclient.common import utils
 
 logger = logging.getLogger(__name__)
+
 
 class ProgressHook(progressbar.VerboseIteratorWrapper):
     def __init__(self, wrapped, totalsize, hook=None, method='download'):
@@ -57,12 +58,14 @@ class ProgressHook(progressbar.VerboseIteratorWrapper):
     def _display_progress_bar(self, size_read):
         if self._show_progress:
             self._curr_size += size_read
-            self._curr_pct = round(int(100 * self._curr_size / self._totalsize))
+            self._curr_pct = round(int(100 * self._curr_size /
+                                       self._totalsize))
             return self.log_current_progress()
 
     def log_current_progress(self):
         # Only log progress if a hook has been received
-        if not hasattr(self,'hook') or not hasattr(self.hook, 'on_update_status'):
+        if not hasattr(self, 'hook') or not hasattr(self.hook,
+                                                    'on_update_status'):
             return
         if self._curr_pct == self._last_update:  #No repeat-updates
             return
@@ -75,7 +78,6 @@ class ProgressHook(progressbar.VerboseIteratorWrapper):
             self.hook.on_update_status("Uploading - %s" % self._curr_pct)
 
 
-
 class ImageManager(BaseDriver):
     """
     Convienence class that uses a combination of boto and euca2ools calls
@@ -86,7 +88,7 @@ class ImageManager(BaseDriver):
     glance = None
     nova = None
     keystone = None
-    CACHE_TIMEOUT = 5 # minutes
+    CACHE_TIMEOUT = 5  # minutes
 
     def keystone_tenants_method(self):
         """
@@ -155,7 +157,7 @@ class ImageManager(BaseDriver):
             creds['password'] = secret
         auth_version = creds.get('ex_force_auth_version', '2.0_password')
         if '/v2.0' in creds['auth_url']:
-            creds['auth_url'] = creds['auth_url'].replace('/tokens','')
+            creds['auth_url'] = creds['auth_url'].replace('/tokens', '')
         elif '2' in auth_version:
             creds['auth_url'] += "/v2.0/"
             creds['version'] = 'v2.0'
@@ -169,7 +171,7 @@ class ImageManager(BaseDriver):
             raise KeyError("Credentials missing in __init__. ")
 
         admin_args = kwargs.copy()
-        auth_version = kwargs.get('ex_force_auth_version','2.0_password')
+        auth_version = kwargs.get('ex_force_auth_version', '2.0_password')
         if '2' in auth_version:
             if '/v2.0/tokens' not in admin_args['auth_url']:
                 admin_args['auth_url'] += '/v2.0/tokens'
@@ -183,7 +185,7 @@ class ImageManager(BaseDriver):
     def _parse_download_location(self, server, image_name, **kwargs):
         download_location = kwargs.get('download_location')
         download_dir = kwargs.get('download_dir')
-        identity_version = self.creds.get('version','v2.0')
+        identity_version = self.creds.get('version', 'v2.0')
         list_args = {}
         if '3' in identity_version:
             domain_id = kwargs.pop('domain', 'default')
@@ -193,7 +195,9 @@ class ImageManager(BaseDriver):
                             "'download_dir' or 'download_location'")
         elif not download_location:
             #Use download dir & tenant_name to keep filesystem order
-            tenant = find(self.keystone_tenants_method(), id=server.tenant_id, **list_args)
+            tenant = find(self.keystone_tenants_method(),
+                          id=server.tenant_id,
+                          **list_args)
             local_user_dir = os.path.join(download_dir, tenant.name)
             if not os.path.exists(os.path.dirname(local_user_dir)):
                 os.makedirs(local_user_dir)
@@ -211,25 +215,32 @@ class ImageManager(BaseDriver):
         #Step 0: Is the instance alive?
         server = self.get_server(instance_id)
         if not server and not kwargs.get('download_location'):
-            raise Exception("Instance %s does not exist -- download_location required to continue!" % instance_id)
-
+            raise Exception(
+                "Instance %s does not exist -- download_location required to continue!"
+                % instance_id)
 
         #Set download location
-        download_dir, download_location = self._parse_download_location(server, image_name, **kwargs)
+        download_dir, download_location = self._parse_download_location(
+            server, image_name, **kwargs)
         download_args = {
-                'snapshot_id': kwargs.get('snapshot_id'),
-                'instance_id': instance_id,
-                'download_dir' : download_dir,
-                'download_location' : download_location,
+            'snapshot_id': kwargs.get('snapshot_id'),
+            'instance_id': instance_id,
+            'download_dir': download_dir,
+            'download_location': download_location,
         }
         return download_args
 
-    def download_instance(self, instance_id, download_location='/tmp', **kwargs):
-        snapshot_id=kwargs.get('snapshot_id',None)
+    def download_instance(self,
+                          instance_id,
+                          download_location='/tmp',
+                          **kwargs):
+        snapshot_id = kwargs.get('snapshot_id', None)
         if snapshot_id:
-            snapshot_id, download_location = self.download_snapshot(snapshot_id, download_location)
+            snapshot_id, download_location = self.download_snapshot(
+                snapshot_id, download_location)
         else:
-            snapshot_id, download_location = self._download_instance(instance_id, download_location)
+            snapshot_id, download_location = self._download_instance(
+                instance_id, download_location)
         return snapshot_id, download_location
 
     def create_image(self, instance_id, image_name, *args, **kwargs):
@@ -243,16 +254,20 @@ class ImageManager(BaseDriver):
                 download_location = download_dir/username/image_name.qcow2
         """
         #Step 1: Retrieve a copy of the instance ( Use snapshot_id if given )
-        download_kwargs = self.download_instance_args(instance_id, image_name, **kwargs)
-        snapshot_id, download_location = self.download_instance(**download_kwargs)
+        download_kwargs = self.download_instance_args(instance_id, image_name,
+                                                      **kwargs)
+        snapshot_id, download_location = self.download_instance(
+            **download_kwargs)
         download_dir = os.path.dirname(download_location)
-	#Step 2: Turn the snapshot into a 'formal image'
-        kwargs.pop('download_dir',None)
-        kwargs.pop('download_location',None)
-        return self.clone_image(snapshot_id, image_name, download_dir, download_location, **kwargs)
+        #Step 2: Turn the snapshot into a 'formal image'
+        kwargs.pop('download_dir', None)
+        kwargs.pop('download_location', None)
+        return self.clone_image(snapshot_id, image_name, download_dir,
+                                download_location, **kwargs)
 
-    def clone_image(self, parent_image_id, image_name, download_dir, download_location, **kwargs):
-	"""
+    def clone_image(self, parent_image_id, image_name, download_dir,
+                    download_location, **kwargs):
+        """
 	Creates an image of an image in the image-list
         Required Args:
             parent_image_id - The parent image that will be cloned
@@ -264,20 +279,19 @@ class ImageManager(BaseDriver):
         self.clear_cache()
         parent_image = self.get_image(parent_image_id)
         #Step 1 download a local copy
-        if not os.path.exists(download_location) or kwargs.get('force',False):
+        if not os.path.exists(download_location) or kwargs.get('force', False):
             self.download_image(parent_image_id, download_location)
 
-        #Step 2: Clean the local copy
-        if kwargs.get('clean_image',True):
-            mount_and_clean(
-                    download_location,
-                    status_hook=getattr(self, 'hook', None),
-                    method_hook=getattr(self, 'clean_hook',None),
-                    **kwargs)
+    #Step 2: Clean the local copy
+        if kwargs.get('clean_image', True):
+            mount_and_clean(download_location,
+                            status_hook=getattr(self, 'hook', None),
+                            method_hook=getattr(self, 'clean_hook', None),
+                            **kwargs)
 
-        #Step 3: Upload the local copy as a 'real' image
-        # with seperate kernel & ramdisk
-        if kwargs.get('upload_image',True):
+    #Step 3: Upload the local copy as a 'real' image
+    # with seperate kernel & ramdisk
+        if kwargs.get('upload_image', True):
             if hasattr(parent_image, 'properties'):  # Treated as an obj.
                 properties = parent_image.properties
                 properties.update({
@@ -286,12 +300,14 @@ class ImageManager(BaseDriver):
                 })
             elif hasattr(parent_image, 'items'):  # Treated as a dict.
                 properties = dict(parent_image.items())
-            upload_args = self.parse_upload_args(image_name, download_location,
-                                                 kernel_id=properties.get('kernel_id'),
-                                                 ramdisk_id=properties.get('ramdisk_id'),
-                                                 disk_format=properties.get('disk_format'),
-                                                 container_format=properties.get('container_format'),
-                                                 **kwargs)
+            upload_args = self.parse_upload_args(
+                image_name,
+                download_location,
+                kernel_id=properties.get('kernel_id'),
+                ramdisk_id=properties.get('ramdisk_id'),
+                disk_format=properties.get('disk_format'),
+                container_format=properties.get('container_format'),
+                **kwargs)
             new_image = self.upload_local_image(**upload_args)
 
         if kwargs.get('remove_local_image', True):
@@ -302,7 +318,8 @@ class ImageManager(BaseDriver):
             try:
                 self.delete_images(image_id=parent_image.id)
             except Exception as exc:
-                logger.exception("Could not delete the image %s - %s" % (parent_image.id, exc.message))
+                logger.exception("Could not delete the image %s - %s" %
+                                 (parent_image.id, exc.message))
 
         return new_image
 
@@ -314,39 +331,36 @@ class ImageManager(BaseDriver):
         if kwargs.get('kernel_id') and kwargs.get('ramdisk_id'):
             #Both kernel_id && ramdisk_id
             #Prepare for upload_local_image()
-            return self._parse_args_upload_local_image(image_name,
-                                                  image_path,
-                                                  **kwargs)
+            return self._parse_args_upload_local_image(image_name, image_path,
+                                                       **kwargs)
         elif kwargs.get('kernel_path') and kwargs.get('ramdisk_path'):
             #Both kernel_path && ramdisk_path
             #Prepare for upload_full_image()
-            return self._parse_args_upload_full_image(image_name,
-                    image_path, **kwargs)
+            return self._parse_args_upload_full_image(image_name, image_path,
+                                                      **kwargs)
         #one path and one id OR no path no id
         else:
             #Image does not need a kernel/ramdisk and runs entirely on its own.
-            return self._parse_args_upload_local_image(
-                image_name, image_path, **kwargs)
+            return self._parse_args_upload_local_image(image_name, image_path,
+                                                       **kwargs)
 
-    def _parse_args_upload_full_image(self, image_name,
-                                      image_path, **kwargs):
+    def _parse_args_upload_full_image(self, image_name, image_path, **kwargs):
         upload_args = {
-            'image_name':image_name,
-            'image_path':image_path,
-            'kernel_path':kwargs['kernel_path'],
-            'ramdisk_path':kwargs['ramdisk_path'],
-            'is_public':kwargs.get('public',True),
+            'image_name': image_name,
+            'image_path': image_path,
+            'kernel_path': kwargs['kernel_path'],
+            'ramdisk_path': kwargs['ramdisk_path'],
+            'is_public': kwargs.get('public', True),
         }
         return upload_args
 
-    def _parse_args_upload_local_image(self, image_name,
-                                       image_path, **kwargs):
+    def _parse_args_upload_local_image(self, image_name, image_path, **kwargs):
         upload_args = {
-             'image_path':image_path,
-             'image_name':image_name,
-             'disk_format':kwargs.get('disk_format', 'raw'),
-             'container_format':kwargs.get('container_format','bare'),
-             'private_user_list':kwargs.get('private_user_list', []),
+            'image_path': image_path,
+            'image_name': image_name,
+            'disk_format': kwargs.get('disk_format', 'raw'),
+            'container_format': kwargs.get('container_format', 'bare'),
+            'private_user_list': kwargs.get('private_user_list', []),
         }
         if kwargs.get('public') and not kwargs.get('visibility'):
             upload_args['visibility'] = \
@@ -355,7 +369,7 @@ class ImageManager(BaseDriver):
             raise ValueError("Missing kwarg 'visibility'")
         if kwargs.get('kernel_id') and kwargs.get('ramdisk_id'):
             upload_args.update({
-                'kernel_id':  kwargs['kernel_id'],
+                'kernel_id': kwargs['kernel_id'],
                 'ramdisk_id': kwargs['ramdisk_id']
             })
 
@@ -367,7 +381,8 @@ class ImageManager(BaseDriver):
             upload_args.update(included_metadata)
         return upload_args
 
-    def download_snapshot(self, snapshot_id, download_location, *args, **kwargs):
+    def download_snapshot(self, snapshot_id, download_location, *args,
+                          **kwargs):
         """
         Download an existing snapshot to local download directory
         Required Args:
@@ -375,11 +390,11 @@ class ImageManager(BaseDriver):
             download_location - The exact path where image will be downloaded
         """
         #Step 1: Find snapshot by id
-        return (snapshot_id,
-                self.download_image(snapshot_id, download_location))
+        return (snapshot_id, self.download_image(snapshot_id,
+                                                 download_location))
 
-
-    def _download_instance(self, instance_id, download_location, *args, **kwargs):
+    def _download_instance(self, instance_id, download_location, *args,
+                           **kwargs):
         """
         Download an existing instance to local download directory
         Required Args:
@@ -393,42 +408,53 @@ class ImageManager(BaseDriver):
         #Step 2: Create local path for copying image
         server = self.get_server(instance_id)
         if server:
-            identity_version = self.creds.get('version','v2.0')
+            identity_version = self.creds.get('version', 'v2.0')
             list_args = {}
             if '3' in identity_version:
                 domain_id = kwargs.pop('domain', 'default')
                 list_args['domain_id'] = domain_id
-            tenant = find(self.keystone_tenants_method(), id=server.tenant_id, **list_args)
+            tenant = find(self.keystone_tenants_method(),
+                          id=server.tenant_id,
+                          **list_args)
         else:
             tenant = None
-        ss_prefix = kwargs.get('ss_prefix',
-                'ChromoSnapShot_%s' % instance_id) #Legacy format
+        ss_prefix = kwargs.get('ss_prefix', 'ChromoSnapShot_%s' %
+                               instance_id)  #Legacy format
         snapshot = self.find_image(ss_prefix, contains=True)
         if snapshot:
             snapshot = snapshot[0]
             logger.info("Found snapshot %s. " % snapshot.id)
             if self.contains_image(snapshot.id, download_location):
-                logger.info("Download should be valid, returning snapshot+location")
+                logger.info(
+                    "Download should be valid, returning snapshot+location")
                 return (snapshot.id, download_location)
-            if hasattr(self,'hook') and hasattr(self.hook, 'on_update_status'):
-                self.hook.on_update_status("Downloading Snapshot:%s" % (snapshot.id,))
-            logger.info("Downloading from existing snapshot: %s" % (snapshot.id,))
+            if hasattr(self, 'hook') and hasattr(self.hook,
+                                                 'on_update_status'):
+                self.hook.on_update_status("Downloading Snapshot:%s" %
+                                           (snapshot.id, ))
+            logger.info("Downloading from existing snapshot: %s" %
+                        (snapshot.id, ))
             return (snapshot.id,
                     self.download_image(snapshot.id, download_location))
 
-        now = kwargs.get('timestamp',datetime.datetime.now()) # Pytz datetime
+        now = kwargs.get('timestamp', datetime.datetime.now())  # Pytz datetime
         now_str = now.strftime('%Y-%m-%d_%H:%M:%S')
         ss_name = '%s_%s' % (ss_prefix, now_str)
         meta_data = {}
-        if hasattr(self,'hook') and hasattr(self.hook, 'on_update_status'):
-            self.hook.on_update_status("Creating Snapshot:%s from Instance:%s" % (ss_name, instance_id))
+        if hasattr(self, 'hook') and hasattr(self.hook, 'on_update_status'):
+            self.hook.on_update_status(
+                "Creating Snapshot:%s from Instance:%s" %
+                (ss_name, instance_id))
         logger.info("Creating snapshot from instance %s. " % instance_id)
-        snapshot = self.create_snapshot(instance_id, ss_name, delay=True, **meta_data)
-        return (snapshot.id,
-                self.download_image(snapshot.id, download_location))
+        snapshot = self.create_snapshot(instance_id,
+                                        ss_name,
+                                        delay=True,
+                                        **meta_data)
+        return (snapshot.id, self.download_image(snapshot.id,
+                                                 download_location))
 
     def download_image_args(self, image_id, **kwargs):
-        download_dir= kwargs.get('download_dir','/tmp')
+        download_dir = kwargs.get('download_dir', '/tmp')
 
         image = self.get_image(image_id)
         if image.container_format == 'ami':
@@ -440,15 +466,13 @@ class ImageManager(BaseDriver):
         # Create our own sub-system inside the chosen directory
         # <dir>/<image_id>
         # This helps us keep track of ... everything
-        download_location = os.path.join(
-                download_dir,
-                image_id,
-                "%s.%s" % (image.name, ext))
+        download_location = os.path.join(download_dir, image_id,
+                                         "%s.%s" % (image.name, ext))
         download_args = {
-                'snapshot_id': kwargs.get('snapshot_id'),
-                'instance_id': instance_id,
-                'download_dir' : download_dir,
-                'download_location' : download_location,
+            'snapshot_id': kwargs.get('snapshot_id'),
+            'instance_id': instance_id,
+            'download_dir': download_dir,
+            'download_location': download_location,
         }
         return download_args
 
@@ -484,10 +508,8 @@ class ImageManager(BaseDriver):
         if not parent_image_id or parent_image_id == image_id:
             logger.warn("No image size available for %s" % image_id)
             return -1
-        logger.warn(
-            "No image size available. "
-            "Checking parent image %s"
-            % parent_image_id)
+        logger.warn("No image size available. "
+                    "Checking parent image %s" % parent_image_id)
         return self.get_image_size(parent_image_id)
 
     def download_image(self, image_id, download_location):
@@ -499,66 +521,87 @@ class ImageManager(BaseDriver):
         return self._perform_api_download(image_id, download_location)
 
     def _perform_api_download(self, image_id, download_location, hook=None):
-        if hook and not hasattr(self,'hook'):
+        if hook and not hasattr(self, 'hook'):
             self.hook = hook
         image = self.get_image(image_id)
         #Step 2: Download local copy of snapshot
         logger.info("Downloading Image %s: %s" % (image_id, download_location))
         if not os.path.exists(os.path.dirname(download_location)):
             os.makedirs(os.path.dirname(download_location))
-        with open(download_location,'wb') as f:
+        with open(download_location, 'wb') as f:
             body = self.glance.images.data(image_id)
             if body == None:  # NOTE: Explicitly checking for None because the iterator returned here is 'Falsy'
-                raise Exception("Image Download Failed! Did not receive data (%s) from glance for image %s" % (body,image_id))
-            body = ProgressHook(body, len(body), getattr(self, 'hook', None), 'download')
+                raise Exception(
+                    "Image Download Failed! Did not receive data (%s) from glance for image %s"
+                    % (body, image_id))
+            body = ProgressHook(body, len(body), getattr(self, 'hook', None),
+                                'download')
             for chunk in body:
                 f.write(chunk)
         if body._totalsize != body._curr_size:
-            raise Exception("Image Download Failed! Current Size %s/%s" % (body._curr_size, body._totalsize))
-        logger.info("Download Image %s Completed: %s" % (image_id, download_location))
+            raise Exception("Image Download Failed! Current Size %s/%s" %
+                            (body._curr_size, body._totalsize))
+        logger.info("Download Image %s Completed: %s" %
+                    (image_id, download_location))
         return download_location
 
     def upload_image(self, image_name, image_path, **upload_args):
         if upload_args.get('kernel_path') and upload_args.get('ramdisk_path'):
-            return self.upload_full_image(image_name, image_path, **upload_args)
+            return self.upload_full_image(image_name, image_path,
+                                          **upload_args)
         else:
-            return self.upload_local_image(image_name, image_path, **upload_args)
+            return self.upload_local_image(image_name, image_path,
+                                           **upload_args)
 
-    def upload_local_image(self, image_name, image_path,
-                     container_format='ovf',
-                     disk_format='raw',
-                     is_public=True, private_user_list=[], **extras):
+    def upload_local_image(self,
+                           image_name,
+                           image_path,
+                           container_format='ovf',
+                           disk_format='raw',
+                           is_public=True,
+                           private_user_list=[],
+                           **extras):
         """
         Upload a single file as a glance image
         'extras' kwargs will be passed directly to glance.
         """
-        logger.info("Creating new image %s - %s" % (image_name, container_format))
+        logger.info("Creating new image %s - %s" %
+                    (image_name, container_format))
         new_image = self.glance.images.create(
             name=image_name,
             container_format=container_format,
             disk_format=disk_format,
             visibility="public" if is_public else "private",
             **extras)
-        logger.info("Uploading file to newly created image %s - %s" % (new_image.id, image_path))
-        if hasattr(self,'hook') and hasattr(self.hook, 'on_update_status'):
-            self.hook.on_update_status("Uploading file to image %s" % new_image.id)
+        logger.info("Uploading file to newly created image %s - %s" %
+                    (new_image.id, image_path))
+        if hasattr(self, 'hook') and hasattr(self.hook, 'on_update_status'):
+            self.hook.on_update_status("Uploading file to image %s" %
+                                       new_image.id)
         if not os.path.exists(image_path):
-            raise Exception("Image Upload failed! Image path (%s) does not exist." % (image_path))
+            raise Exception(
+                "Image Upload failed! Image path (%s) does not exist." %
+                (image_path))
         data_file = open(image_path, 'rb')
         filesize = utils.get_file_size(data_file)
-        body = ProgressHook(data_file, filesize, getattr(self, 'hook', None), 'upload')
+        body = ProgressHook(data_file, filesize, getattr(self, 'hook', None),
+                            'upload')
 
         self.glance.images.upload(new_image.id, data_file)
         # ASSERT: New image ID now that 'the_file' has completed the upload
         logger.info("New image created: %s - %s" % (image_name, new_image.id))
         for tenant_name in private_user_list:
-            self.share_image(new_image,tenant_name)
-            logger.info("%s has permission to launch %s"
-                         % (tenant_name, new_image))
+            self.share_image(new_image, tenant_name)
+            logger.info("%s has permission to launch %s" %
+                        (tenant_name, new_image))
         return new_image.id
 
-    def upload_full_image(self, image_name, image_path,
-                          kernel_path, ramdisk_path, is_public=True,
+    def upload_full_image(self,
+                          image_name,
+                          image_path,
+                          kernel_path,
+                          ramdisk_path,
+                          is_public=True,
                           private_user_list=[]):
         """
         Upload a full image to glance..
@@ -575,35 +618,36 @@ class ImageManager(BaseDriver):
                                              disk_format='aki',
                                              is_public=is_public)
         new_ramdisk = self.upload_local_image('eri-%s' % image_name,
-                                             ramdisk_path,
-                                             container_format='ari',
-                                             disk_format='ari',
-                                             is_public=is_public)
-        opts = {
-            'kernel_id' : new_kernel,
-            'ramdisk_id' : new_ramdisk
-        }
-        new_image = self.upload_local_image(image_name, image_path,
-                                             container_format='ami',
-                                             disk_format='ami',
-                                             is_public=is_public,
-                                             properties=opts)
+                                              ramdisk_path,
+                                              container_format='ari',
+                                              disk_format='ari',
+                                              is_public=is_public)
+        opts = {'kernel_id': new_kernel, 'ramdisk_id': new_ramdisk}
+        new_image = self.upload_local_image(image_name,
+                                            image_path,
+                                            container_format='ami',
+                                            disk_format='ami',
+                                            is_public=is_public,
+                                            properties=opts)
         for tenant_name in private_user_list:
-            self.share_image(new_kernel,tenant_name)
-            self.share_image(new_ramdisk,tenant_name)
-            self.share_image(new_image,tenant_name)
-            logger.debug("%s has permission to launch %s"
-                         % (tenant_name, new_image))
+            self.share_image(new_kernel, tenant_name)
+            self.share_image(new_ramdisk, tenant_name)
+            self.share_image(new_image, tenant_name)
+            logger.debug("%s has permission to launch %s" %
+                         (tenant_name, new_image))
         return new_image
 
     def delete_images(self, image_id=None, image_name=None):
         if not image_id and not image_name:
-            raise Exception("delete_image expects image_name or image_id as keyword"
-            " argument")
+            raise Exception(
+                "delete_image expects image_name or image_id as keyword"
+                " argument")
 
         if image_name:
-            images = [img for img in self.admin_list_images()
-                      if image_name in img.name]
+            images = [
+                img for img in self.admin_list_images()
+                if image_name in img.name
+            ]
         elif image_id:
             images = [self.get_image(image_id)]
 
@@ -631,8 +675,10 @@ class ImageManager(BaseDriver):
 
         # Evict the image cache, since we have created a new image
         self.clear_cache()
-        if hasattr(self,'hook') and hasattr(self.hook, 'on_update_status'):
-            self.hook.on_update_status("Retrieving Snapshot:%s created from Instance:%s" % (snapshot_id, instance_id))
+        if hasattr(self, 'hook') and hasattr(self.hook, 'on_update_status'):
+            self.hook.on_update_status(
+                "Retrieving Snapshot:%s created from Instance:%s" %
+                (snapshot_id, instance_id))
         snapshot = self.get_image(snapshot_id)
         if not delay:
             return snapshot
@@ -644,12 +690,14 @@ class ImageManager(BaseDriver):
         #Step 2: Wait (Exponentially) until status moves from:
         # queued --> saving --> active
         attempts = 0
-        logger.debug("Attempting to retrieve Snapshot %s" % (snapshot_id,))
+        logger.debug("Attempting to retrieve Snapshot %s" % (snapshot_id, ))
         while True:
             try:
                 snapshot = self.get_image(snapshot_id, force_lookup=True)
             except glance_exception.HTTPUnauthorized:
-                raise Exception("Cannot contact glance to retrieve snapshot - %s" % snapshot_id)
+                raise Exception(
+                    "Cannot contact glance to retrieve snapshot - %s" %
+                    snapshot_id)
             if snapshot:
                 sstatus = snapshot.status
             else:
@@ -657,21 +705,23 @@ class ImageManager(BaseDriver):
 
             if attempts >= timeout:
                 break
-            if sstatus in ["active","failed"]:
+            if sstatus in ["active", "failed"]:
                 break
 
             attempts += 1
-            logger.debug("Snapshot %s in non-active state %s" % (snapshot_id, sstatus))
+            logger.debug("Snapshot %s in non-active state %s" %
+                         (snapshot_id, sstatus))
             logger.debug("Attempt:%s, wait 1 minute" % attempts)
             time.sleep(60)
         if not snapshot:
-            raise Exception("Retrieve_snapshot Failed. No ImageID %s" % snapshot_id)
+            raise Exception("Retrieve_snapshot Failed. No ImageID %s" %
+                            snapshot_id)
         if sstatus not in 'active':
-            logger.warn("Retrieve_snapshot timeout exceeded %sm. Final status was %s" % (timeout,sstatus))
+            logger.warn(
+                "Retrieve_snapshot timeout exceeded %sm. Final status was %s" %
+                (timeout, sstatus))
 
         return snapshot
-
-
 
     # Private methods and helpers
     def _read_file_type(self, local_image):
@@ -685,9 +735,8 @@ class ImageManager(BaseDriver):
         elif 'Linux rev 1.0' in out.lower() and 'ext' in out.lower():
             return 'img'
         else:
-            raise Exception("Could not guess the type of file. Output=%s"
-                            % out)
-
+            raise Exception("Could not guess the type of file. Output=%s" %
+                            out)
 
     def _admin_identity_creds(self, **kwargs):
         creds = {}
@@ -703,12 +752,15 @@ class ImageManager(BaseDriver):
         creds['router_name'] = kwargs.get('router_name')
         creds['admin_url'] = kwargs.get('admin_url')
         creds['ex_force_auth_url'] = kwargs.get('auth_url')
-        if 'ex_force_auth_version' not in kwargs and 'v3' in kwargs.get('auth_url',''):
+        if 'ex_force_auth_version' not in kwargs and 'v3' in kwargs.get(
+                'auth_url', ''):
             creds['ex_force_auth_version'] = '3.x_password'
-        elif 'ex_force_auth_version' not in kwargs or 'v2.0' in kwargs.get('auth_url',''):
+        elif 'ex_force_auth_version' not in kwargs or 'v2.0' in kwargs.get(
+                'auth_url', ''):
             creds['ex_force_auth_version'] = '2.0_password'
         else:
-            creds['ex_force_auth_version'] = '3.x_password' # Default, explicitly stated.
+            creds[
+                'ex_force_auth_version'] = '3.x_password'  # Default, explicitly stated.
 
         return creds
 
@@ -732,7 +784,9 @@ class ImageManager(BaseDriver):
         version = kwargs.get('version')
         if version == 'v3':
             (auth, sess, token) = _connect_to_keystone_v3(**kwargs)
-            keystone = _connect_to_keystone(auth=auth, session=sess, version=version)
+            keystone = _connect_to_keystone(auth=auth,
+                                            session=sess,
+                                            version=version)
             nova = _connect_to_nova_by_auth(auth=auth, session=sess)
             glance = _connect_to_glance_by_auth(auth=auth, session=sess)
             glance_v1 = glance
@@ -751,8 +805,10 @@ class ImageManager(BaseDriver):
         nova_args = credentials.copy()
         #HACK - Nova is certified-broken-on-v3.
         nova_args['version'] = 'v2.0'
-        nova_args['auth_url'] = nova_args['auth_url'].replace('v3','v2.0').replace('/tokens','')
-        if credentials.get('ex_force_auth_version','3.x_password') == '2.0_password':
+        nova_args['auth_url'] = nova_args['auth_url'].replace(
+            'v3', 'v2.0').replace('/tokens', '')
+        if credentials.get('ex_force_auth_version',
+                           '3.x_password') == '2.0_password':
             nova_args['tenant_name'] = credentials.get('project_name')
         nova_args.pop('admin_url', None)
         nova_args.pop('ex_project_name', None)
@@ -765,15 +821,18 @@ class ImageManager(BaseDriver):
         ks_args = credentials.copy()
         auth_version = ks_args.get('version', 'v3')
         ks_version = ks_args.get('ex_force_auth_version', '3.x_password')
-        ks_args['auth_url'] = ks_args['auth_url'].replace('/v2.0','').replace('/v3','').replace('/tokens','')
+        ks_args['auth_url'] = ks_args['auth_url'].replace('/v2.0', '').replace(
+            '/v3', '').replace('/tokens', '')
         if 'project_name' not in ks_args:
-            ks_args['project_name'] = ks_args.get('tenant_name','')
+            ks_args['project_name'] = ks_args.get('tenant_name', '')
         if ks_version == '3.x_password':
             ks_args['auth_url'] += '/v3'
         elif ks_version == '2.0_password':
             ks_args['auth_url'] += '/v2.0'
         #Graceful degredation -- use project_name over tenant_name, tenant_name over username.
-        ks_args['project_name'] = ks_args.get('ex_tenant_name', ks_args.get('ex_project_name', ks_args.get('username', None)))
+        ks_args['project_name'] = ks_args.get(
+            'ex_tenant_name',
+            ks_args.get('ex_project_name', ks_args.get('username', None)))
         return ks_args
 
     def get_instance(self, instance_id):
@@ -796,13 +855,17 @@ class ImageManager(BaseDriver):
         return None
 
     #Image sharing
-    def shared_images_for(self, tenant_name=None,
-                          image_name=None, image_id=None):
+    def shared_images_for(self,
+                          tenant_name=None,
+                          image_name=None,
+                          image_id=None):
         """
         #NOTE: Returns a GENERATOR not a list. (So -- Failures here will PASS silently!)
         """
         if tenant_name:
-            raise KeyError("Key tenant_name has been deprecated in latest version of glance.image_members -- If you need this -- Contact a programmer!")
+            raise KeyError(
+                "Key tenant_name has been deprecated in latest version of glance.image_members -- If you need this -- Contact a programmer!"
+            )
         if image_id:
             image = self.glance.images.get(image_id)
             if hasattr(image, 'visibility'):  # Treated as an obj.
@@ -840,7 +903,7 @@ class ImageManager(BaseDriver):
         """
         Share an image with tenant_name
         """
-        identity_version = self.creds.get('version','v2.0')
+        identity_version = self.creds.get('version', 'v2.0')
         list_args = {}
         if '3' in identity_version:
             domain_id = kwargs.pop('domain', 'default')
@@ -854,12 +917,14 @@ class ImageManager(BaseDriver):
         """
         Remove a shared image with tenant_name
         """
-        identity_version = self.creds.get('version','v2.0')
+        identity_version = self.creds.get('version', 'v2.0')
         list_args = {}
         if '3' in identity_version:
             domain_id = kwargs.pop('domain', 'default')
             list_args['domain_id'] = domain_id
-        tenant = find(self.keystone_tenants_method(), name=tenant_name, **list_args)
+        tenant = find(self.keystone_tenants_method(),
+                      name=tenant_name,
+                      **list_args)
         return self.glance.image_members.delete(image.id, tenant.id)
 
     #Alternative image uploading
@@ -915,7 +980,9 @@ class ImageManager(BaseDriver):
                 and (now_time - self.cache_time > datetime.timedelta(minutes=self.CACHE_TIMEOUT)):
             self.clear_cache()
         if not getattr(self, 'all_images', []):
-            self.all_images = [img for img in self.glance.images.list(**kwargs)]
+            self.all_images = [
+                img for img in self.glance.images.list(**kwargs)
+            ]
             self.cache_time = datetime.datetime.now()
             logger.info("Caching a copy of image-list")
             return self.all_images
@@ -937,12 +1004,15 @@ class ImageManager(BaseDriver):
     def clear_cache(self):
         logger.info("Clearing the cached image-list")
         self.all_images = []
+
     #Finds
 
     def get_image(self, image_id, force_lookup=False):
         if force_lookup:
             return self.glance.images.get(image_id)
-        filtered_list = [img for img in self.admin_list_images() if img.id == image_id]
+        filtered_list = [
+            img for img in self.admin_list_images() if img.id == image_id
+        ]
         if filtered_list:
             return filtered_list[0]
         return None
@@ -972,12 +1042,14 @@ class ImageManager(BaseDriver):
 
     def find_tenant(self, tenant_name, **kwargs):
         try:
-            identity_version = self.creds.get('version','v2.0')
+            identity_version = self.creds.get('version', 'v2.0')
             list_args = {}
             if '3' in identity_version:
                 domain_id = kwargs.pop('domain', 'default')
                 list_args['domain_id'] = domain_id
-            tenant = find(self.keystone_tenants_method(), name=tenant_name, **list_args)
+            tenant = find(self.keystone_tenants_method(),
+                          name=tenant_name,
+                          **list_args)
             return tenant
         except NotFound:
             return None

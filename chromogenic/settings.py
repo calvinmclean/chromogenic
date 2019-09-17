@@ -18,17 +18,17 @@ if hasattr(settings, 'SECRETS_MODULE'):
             "into the file defined in SECRETS_MODULE")
     settings = getattr(settings, 'SECRETS_MODULE')
 
-
 USER_SETTINGS = getattr(settings, 'CHROMOGENIC', {})
 
-
-DEFAULTS =  {
+DEFAULTS = {
     # General
     "SSH_KEY": "",
 }
 
+
 class ReadOnlyAttrDict(dict):
     __getattr__ = dict.__getitem__
+
 
 new_settings = DEFAULTS.copy()
 new_settings.update(USER_SETTINGS)

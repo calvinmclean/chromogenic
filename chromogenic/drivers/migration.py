@@ -34,6 +34,7 @@ from chromogenic.common import append_line_in_files,\
 
 logger = logging.getLogger(__name__)
 
+
 class MigrationPlan():
     """
     Migration Plans are used to convert an image between two virtualization
@@ -47,8 +48,8 @@ class MigrationPlan():
     """
     @classmethod
     def convert(cls, image_path, upload_dir):
-        (kernel_dir, ramdisk_dir, mount_point) = build_imaging_dirs(upload_dir,
-                full_image=True)
+        (kernel_dir, ramdisk_dir,
+         mount_point) = build_imaging_dirs(upload_dir, full_image=True)
 
         apply_label(image_path, label='root')  # TODO: Is this necessary?
 
@@ -63,23 +64,24 @@ class MigrationPlan():
 
             #Hooks for debian/rhel specific cleaning commands
             if distro == 'ubuntu':
-                 cls.debian_mount(image_path, mount_point)
+                cls.debian_mount(image_path, mount_point)
             elif distro == 'centos':
-                 cls.rhel_mount(image_path, mount_point)
+                cls.rhel_mount(image_path, mount_point)
 
             try:
                 prepare_chroot_env(mounted_path)
                 #Hooks for debian/rhel specific chroot commands
                 if distro == 'ubuntu':
-                     cls.debian_chroot(image_path, mount_point)
+                    cls.debian_chroot(image_path, mount_point)
                 elif distro == 'centos':
-                     cls.rhel_chroot(image_path, mount_point)
+                    cls.rhel_chroot(image_path, mount_point)
             finally:
                 remove_chroot_env(mounted_path)
 
-            (kernel_path, ramdisk_path) = cls.get_kernel_ramdisk(mount_point,
-                                                    kernel_dir, ramdisk_dir)
-    
+            (kernel_path,
+             ramdisk_path) = cls.get_kernel_ramdisk(mount_point, kernel_dir,
+                                                    ramdisk_dir)
+
             #Use the image, kernel, and ramdisk paths
             #to initialize any driver that implements 'upload_full_image'
             return (image_path, kernel_path, ramdisk_path)
@@ -105,12 +107,11 @@ class MigrationPlan():
     def debian_mount(cls, image_path, mounted_path):
         logger.warn("This method is not implemented by default")
         return
+
     @classmethod
     def get_kernel_ramdisk(cls, mount_point, kernel_dir, ramdisk_dir):
         logger.warn("This method is not implemented by default")
         return
-
-
 
 
 class KVM2Xen(MigrationPlan):
@@ -125,32 +126,38 @@ class KVM2Xen(MigrationPlan):
         #Retrieve the kernel/ramdisk pair and return
         (kernel_path,
          ramdisk_path) = retrieve_kernel_ramdisk(mount_point,
-                                                 kernel_dir, ramdisk_dir,
+                                                 kernel_dir,
+                                                 ramdisk_dir,
                                                  ignore_suffix='el5')
         return (kernel_path, ramdisk_path)
+
 
 class Xen2KVM(MigrationPlan):
     """
     This MigrationPlan will convert a XEN image to KVM image
     """
-
     @classmethod
     def get_kernel_ramdisk(cls, mount_point, kernel_dir, ramdisk_dir):
         #Rebuild ramdisk in case changes were made
         rebuild_ramdisk(mount_point, ignore_suffix='el5xen')
         #Retrieve the kernel/ramdisk pair and return
-        (kernel_path, ramdisk_path) = retrieve_kernel_ramdisk(mount_point,
-                                                 kernel_dir, ramdisk_dir,
+        (kernel_path,
+         ramdisk_path) = retrieve_kernel_ramdisk(mount_point,
+                                                 kernel_dir,
+                                                 ramdisk_dir,
                                                  ignore_suffix='el5xen')
         return (kernel_path, ramdisk_path)
+
     @classmethod
     def debian_chroot(cls, image_path, mounted_path):
         #Here is an example of how to run a command in chroot:
         #run_command(["/usr/sbin/chroot", mounted_path, "/bin/bash", "-c",
         #             "./single/command.sh arg1 arg2 ..."])
         #Run this command in a prepared chroot
-        run_command(["/usr/sbin/chroot", mounted_path, "/bin/bash", "-c",
-                     "apt-get install -qy linux-image initramfs-tools grub"])
+        run_command([
+            "/usr/sbin/chroot", mounted_path, "/bin/bash", "-c",
+            "apt-get install -qy linux-image initramfs-tools grub"
+        ])
         pass
 
     @classmethod
@@ -158,8 +165,10 @@ class Xen2KVM(MigrationPlan):
         #Here is an example of how to run a command in chroot:
         #run_command(["/usr/sbin/chroot", mounted_path, "/bin/bash", "-c",
         #             "./single/command.sh arg1 arg2 ..."])
-        run_command(["/usr/sbin/chroot", mounted_path, "/bin/bash", "-c",
-                     "yum install -qy kernel mkinitrd grub"])
+        run_command([
+            "/usr/sbin/chroot", mounted_path, "/bin/bash", "-c",
+            "yum install -qy kernel mkinitrd grub"
+        ])
         pass
 
     @classmethod
@@ -170,11 +179,11 @@ class Xen2KVM(MigrationPlan):
         """
         #This list will add a single line to an already-existing file
         append_line_file_list = [
-                #("line to add", "file_to_append")
-                ("exec /sbin/getty -L 38400 ttyS0 vt102", "etc/init/getty.conf"),
-                ("exec /sbin/getty -L 38400 ttyS1 vt102", "etc/init/getty.conf"),
+            #("line to add", "file_to_append")
+            ("exec /sbin/getty -L 38400 ttyS0 vt102", "etc/init/getty.conf"),
+            ("exec /sbin/getty -L 38400 ttyS1 vt102", "etc/init/getty.conf"),
         ]
-    
+
         #If etc/init/getty.conf doesn't exist, use this template to create it
         kvm_getty_script = """# getty - ttyS*
 # This service maintains a getty on ttyS0/S1
@@ -188,25 +197,25 @@ respawn
 exec /sbin/getty -L 38400 ttyS0 vt102
 exec /sbin/getty -L 38400 ttyS1 vt102
 """
-    
+
         #This list removes lines matching the pattern from an existing file
         remove_line_file_list = [
-                #("pattern_match", "file_to_test")
-                ("atmo_boot",  "etc/rc.local"),
-                # Save /dev/sda1, /dev/vda, /dev/xvda
-                # Delete all other partitions in etc/fstab
-                ("sda[2-9]", "etc/fstab"),
-                ("sda1[0-9]", "etc/fstab"),
-                ("vd[b-z]",  "etc/fstab"),
-                ]
-    
+            #("pattern_match", "file_to_test")
+            ("atmo_boot", "etc/rc.local"),
+            # Save /dev/sda1, /dev/vda, /dev/xvda
+            # Delete all other partitions in etc/fstab
+            ("sda[2-9]", "etc/fstab"),
+            ("sda1[0-9]", "etc/fstab"),
+            ("vd[b-z]", "etc/fstab"),
+        ]
+
         # This list contains all files that should be deleted
-        remove_file_list = [
-                'etc/init/hvc0.conf']
-    
+        remove_file_list = ['etc/init/hvc0.conf']
+
         remove_line_in_files(remove_line_file_list, mounted_path)
         remove_files(remove_file_list, mounted_path)
-        if not create_file("etc/init/getty.conf", mounted_path, kvm_getty_script):
+        if not create_file("etc/init/getty.conf", mounted_path,
+                           kvm_getty_script):
             #Didn't need to create the file, but we still need to append our
             # new lines
             append_line_in_files(append_line_file_list, mounted_path)
@@ -220,9 +229,9 @@ exec /sbin/getty -L 38400 ttyS1 vt102
         """
         #This list will append a single line to an already-existing file
         append_line_file_list = [
-                #("line to add", "file_to_append")
-                ("S0:2345:respawn:/sbin/agetty ttyS0 115200", "etc/inittab"),
-                ("S1:2345:respawn:/sbin/agetty ttyS1 115200", "etc/inittab"),
+            #("line to add", "file_to_append")
+            ("S0:2345:respawn:/sbin/agetty ttyS0 115200", "etc/inittab"),
+            ("S1:2345:respawn:/sbin/agetty ttyS1 115200", "etc/inittab"),
         ]
 
         #TODO: This etc/fstab line may need some more customization
@@ -231,25 +240,28 @@ exec /sbin/getty -L 38400 ttyS1 vt102
         prepend_line_list = [
             #("line to prepend", "file_to_prepend")
             ("LABEL=root\t\t/\t\t\text3\tdefaults,errors=remount-ro 0 0",
-            "etc/fstab"),
-            ]
+             "etc/fstab"),
+        ]
         #This list removes lines matching the pattern from an existing file
-        remove_line_file_list = [#("pattern_match", "file_to_test")
-                                 ("alias scsi", "etc/modprobe.conf"),
-                                 ("atmo_boot", "etc/rc.local")]
+        remove_line_file_list = [  #("pattern_match", "file_to_test")
+            ("alias scsi", "etc/modprobe.conf"), ("atmo_boot", "etc/rc.local")
+        ]
 
         # This list replaces lines matching a pattern from an existing file
-        replace_line_file_list = [#(pattern_match, pattern_replace, file_to_match)
-                                  ("^\/dev\/sda", "\#\/dev\/sda", "etc/fstab"),
-                                  ("^xvc0", "\#xvc0", "etc/inittab"),
-                                  ("xenblk", "ata_piix", "etc/modprobe.conf"),
-                                  ("xennet", "8139cp", "etc/modprobe.conf")]
+        replace_line_file_list = [  #(pattern_match, pattern_replace, file_to_match)
+            ("^\/dev\/sda", "\#\/dev\/sda", "etc/fstab"),
+            ("^xvc0", "\#xvc0", "etc/inittab"),
+            ("xenblk", "ata_piix", "etc/modprobe.conf"),
+            ("xennet", "8139cp", "etc/modprobe.conf")
+        ]
         #This list removes ALL lines between <pattern_1> and <pattern_2> from an
         # existing file
         multiline_delete_files = [
             #("delete_from","delete_to","file_to_match")
-            ("depmod -a","\/usr\/bin\/ruby \/usr\/sbin\/atmo_boot", "etc/rc.local"),
-            ("depmod -a","\/usr\/bin\/ruby \/usr\/sbin\/atmo_boot", "etc/rc.d/rc.local")
+            ("depmod -a", "\/usr\/bin\/ruby \/usr\/sbin\/atmo_boot",
+             "etc/rc.local"),
+            ("depmod -a", "\/usr\/bin\/ruby \/usr\/sbin\/atmo_boot",
+             "etc/rc.d/rc.local")
         ]
 
         append_line_in_files(append_line_file_list, mounted_path)

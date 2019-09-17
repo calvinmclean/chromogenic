@@ -11,8 +11,13 @@ logger = logging.getLogger(__name__)
 ##
 
 
-def run_command(commandList, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                stdin=None, dry_run=False, shell=False, check_return=False):
+def run_command(commandList,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=None,
+                dry_run=False,
+                shell=False,
+                check_return=False):
     """
     NOTE: Use this to run ANY system command, because its wrapped around a loggger
     Using Popen, run any command at the system level and record the output and error streams
@@ -23,20 +28,28 @@ def run_command(commandList, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     if dry_run:
         #Bail before making the call
         logger.debug("Mock Command: %s" % cmd_str)
-        return ('','')
+        return ('', '')
     #Execution
     try:
         if stdin:
-            proc = subprocess.Popen(commandList, stdout=stdout, stderr=stderr,
-                    stdin=subprocess.PIPE, shell=shell)
+            proc = subprocess.Popen(commandList,
+                                    stdout=stdout,
+                                    stderr=stderr,
+                                    stdin=subprocess.PIPE,
+                                    shell=shell)
         else:
-            proc = subprocess.Popen(commandList, stdout=stdout, stderr=stderr,
-                    shell=shell)
-        out,err = proc.communicate(input=stdin)
+            proc = subprocess.Popen(commandList,
+                                    stdout=stdout,
+                                    stderr=stderr,
+                                    shell=shell)
+        out, err = proc.communicate(input=stdin)
         return_code = proc.returncode
-        logger.info("Completed Command with exit code %s: %s" % (return_code, cmd_str))
+        logger.info("Completed Command with exit code %s: %s" %
+                    (return_code, cmd_str))
         if check_return and return_code != 0:
-                raise Exception("Command returned a non-zero exit code (%s) : %s " % (return_code, cmd_str))
+            raise Exception(
+                "Command returned a non-zero exit code (%s) : %s " %
+                (return_code, cmd_str))
     except Exception as e:
         logger.exception("Failed command: %s" % cmd_str)
         logger.exception(e)
@@ -52,14 +65,15 @@ def run_command(commandList, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     except Exception as e:
         logger.exception(e)
 
-    return (out,err)
+    return (out, err)
+
 
 def overwrite_file(filepath, dry_run=False):
     if '*' in filepath:
         return wildcard_overwrite_file(filepath, dry_run=dry_run)
     if not os.path.exists(filepath):
         logger.debug("Cannot `truncate -s0` to non-existent file: %s" %
-                filepath)
+                     filepath)
         return
     cmd_list = ['/usr/bin/truncate', '-s0', '%s' % filepath]
     run_command(cmd_list, dry_run=dry_run)
@@ -68,9 +82,9 @@ def overwrite_file(filepath, dry_run=False):
 def create_file(filepath, mount_point, text_to_write, dry_run=False):
     filepath = _check_mount_path(filepath)
     create_file_path = os.path.join(mount_point, filepath)
-    if  os.path.exists(create_file_path):
-        logger.warn("Cannot create file %s, the file already exists."
-                    % create_file_path)
+    if os.path.exists(create_file_path):
+        logger.warn("Cannot create file %s, the file already exists." %
+                    create_file_path)
         return False
     write_file(create_file_path, text_to_write)
     return True
@@ -81,6 +95,7 @@ def write_file(filepath, text_to_write):
         #Write the text, end with empty line
         the_file.write('%s\n' % text_to_write)
     logger.info("%s written to file: %s" % (text_to_write, filepath))
+
 
 def wildcard_overwrite_file(wildcard_path, dry_run=False):
     """
@@ -93,6 +108,7 @@ def wildcard_overwrite_file(wildcard_path, dry_run=False):
             cmd_list = ['/usr/bin/truncate', '-s0', '%s' % filepath]
             run_command(cmd_list, dry_run=dry_run)
 
+
 def wildcard_remove(wildcard_path, dry_run=False):
     """
     Expand the wildcard to match all files, delete each one.
@@ -104,24 +120,31 @@ def wildcard_remove(wildcard_path, dry_run=False):
             cmd_list = ['/bin/rm', '-rf', filename]
             run_command(cmd_list, dry_run=dry_run)
 
+
 """
 SED tools - in-place editing of files on the system
 BE VERY CAREFUL USING THESE -- YOU HAVE BEEN WARNED!
 """
-def sed_delete_multi(from_here,to_here,filepath, dry_run=False):
+
+
+def sed_delete_multi(from_here, to_here, filepath, dry_run=False):
     if not os.path.exists(filepath):
         logger.warn("File not found: %s Cannot delete lines" % filepath)
         return
-    cmd_list = ["/bin/sed", "-i", "/%s/,/%s/d" % (from_here, to_here),
-                filepath]
+    cmd_list = [
+        "/bin/sed", "-i",
+        "/%s/,/%s/d" % (from_here, to_here), filepath
+    ]
     run_command(cmd_list, dry_run=dry_run)
 
-def sed_replace(find,replace,filepath, dry_run=False):
+
+def sed_replace(find, replace, filepath, dry_run=False):
     if not os.path.exists(filepath):
         logger.warn("File not found: %s Cannot replace lines" % filepath)
         return
-    cmd_list = ["/bin/sed", "-i", "s/%s/%s/" % (find,replace), filepath]
+    cmd_list = ["/bin/sed", "-i", "s/%s/%s/" % (find, replace), filepath]
     run_command(cmd_list, dry_run=dry_run)
+
 
 def sed_delete_one(remove_string, filepath, dry_run=False):
     if not os.path.exists(filepath):
@@ -129,6 +152,7 @@ def sed_delete_one(remove_string, filepath, dry_run=False):
         return
     cmd_list = ["/bin/sed", "-i", "/%s/d" % remove_string, filepath]
     run_command(cmd_list, dry_run=dry_run)
+
 
 def sed_append(append_string, filepath, dry_run=False):
     if not os.path.exists(filepath):
@@ -139,6 +163,7 @@ def sed_append(append_string, filepath, dry_run=False):
     cmd_list = ["/bin/sed", "-i", "$ a\\%s" % append_string, filepath]
     run_command(cmd_list, dry_run=dry_run)
 
+
 def sed_prepend(prepend_string, filepath, dry_run=False):
     if not os.path.exists(filepath):
         logger.warn("File not found: %s Cannot prepend lines" % filepath)
@@ -148,19 +173,27 @@ def sed_prepend(prepend_string, filepath, dry_run=False):
     cmd_list = ["/bin/sed", "-i", "1i %s" % prepend_string, filepath]
     run_command(cmd_list, dry_run=dry_run)
 
+
 def _line_exists_in_file(needle, filepath):
-    with open(filepath,'r') as _file:
-        if [line for line in _file.readlines()
-            if needle.strip() == line.strip()]:
+    with open(filepath, 'r') as _file:
+        if [
+                line for line in _file.readlines()
+                if needle.strip() == line.strip()
+        ]:
             return True
     return False
 
 
-def _mkinitrd_command(latest_rmdisk, rmdisk_version, distro='centos', preload=[], include=[]):
+def _mkinitrd_command(latest_rmdisk,
+                      rmdisk_version,
+                      distro='centos',
+                      preload=[],
+                      include=[]):
     preload.extend(['ahci'])
-    include.extend(['virtio_pci', 'virtio_ring',
-                    'virtio_blk', 'virtio_net',
-                    'virtio_balloon', 'virtio'])
+    include.extend([
+        'virtio_pci', 'virtio_ring', 'virtio_blk', 'virtio_net',
+        'virtio_balloon', 'virtio'
+    ])
 
     if distro == 'centos':
         mkinitrd_str = "mkinitrd"
@@ -174,26 +207,30 @@ def _mkinitrd_command(latest_rmdisk, rmdisk_version, distro='centos', preload=[]
     mkinitrd_str += " -f /boot/%s %s" % (latest_rmdisk, rmdisk_version)
     return mkinitrd_str
 
-def retrieve_kernel_ramdisk(mounted_path, kernel_dir, ramdisk_dir,
-        ignore_suffix='el5xen'):
+
+def retrieve_kernel_ramdisk(mounted_path,
+                            kernel_dir,
+                            ramdisk_dir,
+                            ignore_suffix='el5xen'):
     distro = check_distro(mounted_path)
     #Determine the latest (KVM) ramdisk to use
     latest_rmdisk, rmdisk_version = get_latest_ramdisk(
-            mounted_path, distro, ignore_suffix=ignore_suffix)
+        mounted_path, distro, ignore_suffix=ignore_suffix)
     #Copy new kernel & ramdisk to the folder
     local_ramdisk_path = _copy_ramdisk(mounted_path, rmdisk_version,
-            ramdisk_dir, distro)
+                                       ramdisk_dir, distro)
     local_kernel_path = _copy_kernel(mounted_path, rmdisk_version, kernel_dir)
 
     return (local_kernel_path, local_ramdisk_path)
 
+
 def _copy_kernel(mounted_path, rmdisk_version, kernel_dir):
     kernel_filename = "vmlinuz-%s" % rmdisk_version
-    local_kernel_path = os.path.join(kernel_dir,
-                                     kernel_filename)
+    local_kernel_path = os.path.join(kernel_dir, kernel_filename)
     mount_kernel_path = os.path.join(mounted_path, "boot", kernel_filename)
     run_command(["/bin/cp", mount_kernel_path, local_kernel_path])
     return local_kernel_path
+
 
 def _copy_ramdisk(mounted_path, rmdisk_version, ramdisk_dir, distro):
     if distro == 'ubuntu':
@@ -201,14 +238,17 @@ def _copy_ramdisk(mounted_path, rmdisk_version, ramdisk_dir, distro):
     elif distro == 'centos':
         ramdisk_filename = "initrd-%s.img" % rmdisk_version
     else:
-        raise Exception ("Cannot identify distro - %s" % distro)
+        raise Exception("Cannot identify distro - %s" % distro)
 
     local_ramdisk_path = os.path.join(ramdisk_dir, ramdisk_filename)
-    mount_ramdisk_path = os.path.join(mounted_path,"boot", ramdisk_filename)
+    mount_ramdisk_path = os.path.join(mounted_path, "boot", ramdisk_filename)
     run_command(["/bin/cp", mount_ramdisk_path, local_ramdisk_path])
     return local_ramdisk_path
 
-def rebuild_ramdisk(mounted_path, preload=[], include=[],
+
+def rebuild_ramdisk(mounted_path,
+                    preload=[],
+                    include=[],
                     ignore_suffix='el5xen'):
     """
     This function will get more complicated in the future... We will need to
@@ -218,21 +258,24 @@ def rebuild_ramdisk(mounted_path, preload=[], include=[],
     #Run this command after installing the latest (non-xen) kernel
     distro = check_distro(mounted_path)
     latest_rmdisk, rmdisk_version = get_latest_ramdisk(
-            mounted_path, distro, ignore_suffix=ignore_suffix)
-    mkinitrd_str = _mkinitrd_command(latest_rmdisk, rmdisk_version,
-                                     distro=distro, preload=preload,
+        mounted_path, distro, ignore_suffix=ignore_suffix)
+    mkinitrd_str = _mkinitrd_command(latest_rmdisk,
+                                     rmdisk_version,
+                                     distro=distro,
+                                     preload=preload,
                                      include=include)
     try:
         prepare_chroot_env(mounted_path)
         #Create a brand new ramdisk using the KVM variables set above
-        run_command(["/usr/sbin/chroot", mounted_path,
-                     "/bin/bash", "-c", mkinitrd_str])
+        run_command([
+            "/usr/sbin/chroot", mounted_path, "/bin/bash", "-c", mkinitrd_str
+        ])
     finally:
         remove_chroot_env(mounted_path)
 
 
 def get_latest_ramdisk(mounted_path, distro, ignore_suffix='el5xen'):
-    boot_dir = os.path.join(mounted_path,'boot/')
+    boot_dir = os.path.join(mounted_path, 'boot/')
     output, _ = run_command(["/bin/bash", "-c", "ls -Fah %s" % boot_dir])
     #Determine the latest (KVM) ramdisk to use
     latest_rmdisk = ''
@@ -241,10 +284,12 @@ def get_latest_ramdisk(mounted_path, distro, ignore_suffix='el5xen'):
         if 'initrd' in line:
             if distro == 'ubuntu' and not line.endswith(ignore_suffix):
                 latest_rmdisk = line
-                rmdisk_version = line.replace('initrd.img-','')
-            elif distro == 'centos' and not line.endswith("%s.img" % ignore_suffix):
+                rmdisk_version = line.replace('initrd.img-', '')
+            elif distro == 'centos' and not line.endswith(
+                    "%s.img" % ignore_suffix):
                 latest_rmdisk = line
-                rmdisk_version = line.replace('initrd-','').replace('.img','')
+                rmdisk_version = line.replace('initrd-',
+                                              '').replace('.img', '')
     if not latest_rmdisk or not rmdisk_version:
         raise Exception("Could not determine the latest ramdisk. Is the "
                         "ramdisk located in %s?" % boot_dir)
@@ -253,15 +298,17 @@ def get_latest_ramdisk(mounted_path, distro, ignore_suffix='el5xen'):
 
 def copy_disk(old_image, new_image, download_dir):
     old_img_dir = os.path.join(download_dir, 'old_image')
-    new_img_dir  = os.path.join(download_dir, 'new_image')
+    new_img_dir = os.path.join(download_dir, 'new_image')
     run_command(['mkdir', '-p', old_img_dir])
     run_command(['mkdir', '-p', new_img_dir])
     try:
         mount_image(old_image, old_img_dir)
         mount_image(new_image, new_img_dir)
 
-        run_command(['/bin/bash', '-c', 'rsync --inplace -a %s/* %s'
-                     % (old_img_dir, new_img_dir)])
+        run_command([
+            '/bin/bash', '-c',
+            'rsync --inplace -a %s/* %s' % (old_img_dir, new_img_dir)
+        ])
     finally:
         run_command(['umount', old_img_dir])
         run_command(['umount', new_img_dir])
@@ -269,11 +316,13 @@ def copy_disk(old_image, new_image, download_dir):
     #old_img_dir)
     #new_img_dir)
 
+
 def check_root():
     import getpass
     if getpass.getuser() == 'root' or os.getuid() == 0:
         return True
     return False
+
 
 def mount_image(image_path, mount_point):
     if not check_root():
@@ -283,10 +332,15 @@ def mount_image(image_path, mount_point):
     return _detect_and_mount_image(image_path, mount_point)
 
 
-def create_empty_image(new_image_path, image_type='raw',
-                      image_size_gb=5, bootable=False, label='root'):
-    run_command(['qemu-img', 'create', '-f', image_type,
-                 new_image_path, "%sG" % image_size_gb])
+def create_empty_image(new_image_path,
+                       image_type='raw',
+                       image_size_gb=5,
+                       bootable=False,
+                       label='root'):
+    run_command([
+        'qemu-img', 'create', '-f', image_type, new_image_path,
+        "%sG" % image_size_gb
+    ])
 
     #SFDisk script by stdin
     #See http://linuxgazette.net/issue46/nielsen.html#create
@@ -297,17 +351,20 @@ def create_empty_image(new_image_path, image_type='raw',
     sfdisk_input = "%s;\n;\n;\n" % line_one
     run_command(['sfdisk', '-D', new_image_path], stdin=sfdisk_input)
     #Disk has unformatted partition
-    out, err = run_command(['fdisk','-l',new_image_path])
+    out, err = run_command(['fdisk', '-l', new_image_path])
     fdisk_stats = _parse_fdisk_stats(out)
     partition = _select_partition(fdisk_stats['devices'])
-    _format_partition(fdisk_stats['disk'], partition, new_image_path,
-            label=label)
+    _format_partition(fdisk_stats['disk'],
+                      partition,
+                      new_image_path,
+                      label=label)
     return new_image_path
 
 
 ##
 # Private Methods
 ##
+
 
 def append_line_in_files(append_files, mount_point, dry_run=False):
     if not append_files:
@@ -317,6 +374,7 @@ def append_line_in_files(append_files, mount_point, dry_run=False):
         mounted_filepath = os.path.join(mount_point, append_to)
         sed_append(append_line, mounted_filepath, dry_run=dry_run)
 
+
 def prepend_line_in_files(prepend_files, mount_point, dry_run=False):
     if not prepend_files:
         return
@@ -324,7 +382,6 @@ def prepend_line_in_files(prepend_files, mount_point, dry_run=False):
         prepend_to = _check_mount_path(prepend_to)
         mounted_filepath = os.path.join(mount_point, prepend_to)
         sed_prepend(prepend_line, mounted_filepath, dry_run=dry_run)
-
 
 
 def remove_files(rm_files, mount_point, dry_run=False):
@@ -364,7 +421,9 @@ def replace_line_in_files(replace_line_files, mount_point, dry_run=False):
     for (replace_str, replace_with, replace_where) in replace_line_files:
         replace_where = _check_mount_path(replace_where)
         mounted_filepath = os.path.join(mount_point, replace_where)
-        sed_replace(replace_str, replace_with, mounted_filepath,
+        sed_replace(replace_str,
+                    replace_with,
+                    mounted_filepath,
                     dry_run=dry_run)
 
 
@@ -386,14 +445,18 @@ def execute_chroot_commands(subprocess_commands, mounted_path, dry_run=False):
         remove_chroot_env(mounted_path)
 
 
-def remove_multiline_in_files(multiline_delete_files, mount_point, dry_run=False):
+def remove_multiline_in_files(multiline_delete_files,
+                              mount_point,
+                              dry_run=False):
     """
     #Remove EVERYTHING between these lines..
     """
     for (delete_from, delete_to, replace_where) in multiline_delete_files:
         replace_where = _check_mount_path(replace_where)
         mounted_filepath = os.path.join(mount_point, replace_where)
-        sed_delete_multi(delete_from, delete_to, mounted_filepath,
+        sed_delete_multi(delete_from,
+                         delete_to,
+                         mounted_filepath,
                          dry_run=dry_run)
 
 
@@ -409,8 +472,8 @@ def check_distro(root_dir=''):
     """
     Either your CentOS or your Ubuntu.
     """
-    etc_release_path = os.path.join(root_dir,'etc/*release*')
-    (out,err) = run_command(['/bin/bash','-c','cat %s' % etc_release_path])
+    etc_release_path = os.path.join(root_dir, 'etc/*release*')
+    (out, err) = run_command(['/bin/bash', '-c', 'cat %s' % etc_release_path])
     if 'centos' in out.lower():
         return 'centos'
     elif 'ubuntu' in out.lower():
@@ -418,14 +481,25 @@ def check_distro(root_dir=''):
     else:
         return 'unknown'
 
+
 def _get_stage_files(root_dir, distro):
     if distro == 'centos':
-        run_command(['/bin/bash','-c','cp -f %s/extras/export/grub_files/centos/* %s/boot/grub/' % (settings.PROJECT_ROOT, root_dir)])
+        run_command([
+            '/bin/bash', '-c',
+            'cp -f %s/extras/export/grub_files/centos/* %s/boot/grub/' %
+            (settings.PROJECT_ROOT, root_dir)
+        ])
     elif distro == 'ubuntu':
-        run_command(['/bin/bash','-c','cp -f %s/extras/export/grub_files/ubuntu/* %s/boot/grub/' % (settings.PROJECT_ROOT, root_dir)])
+        run_command([
+            '/bin/bash', '-c',
+            'cp -f %s/extras/export/grub_files/ubuntu/* %s/boot/grub/' %
+            (settings.PROJECT_ROOT, root_dir)
+        ])
+
 
 def apply_label(image_path, label='root'):
     run_command(['e2label', image_path, label])
+
 
 def _format_partition(disk, part, image_path, label=None):
     #This is a 'known constant'.. It should never change..
@@ -434,8 +508,9 @@ def _format_partition(disk, part, image_path, label=None):
 
     #First mount the loopback device
     loop_offset = part['start'] * disk['logical_sector_size']
-    (loop_str, _) = run_command(['losetup', '-fv', '-o', '%s' % loop_offset,
-        image_path])
+    (loop_str,
+     _) = run_command(['losetup', '-fv', '-o',
+                       '%s' % loop_offset, image_path])
 
     #The last word of the output is the device
     loop_dev = _losetup_extract_device(loop_str)
@@ -454,20 +529,23 @@ def _format_partition(disk, part, image_path, label=None):
 def _losetup_extract_device(loop_str):
     return loop_str.split(' ')[-1].strip()
 
+
 def _get_type_by_metadata(image_path):
     #TODO: Add more logic here
-    stdout, stderr = run_command(['file',image_path])
+    stdout, stderr = run_command(['file', image_path])
     if 'qcow' in stdout.lower():
         return 'qcow'
     else:
         return 'img'
+
 
 def _mount_by_file_metadata(image_path, mount_point):
     image_type = _get_type_by_metadata(image_path)
     if 'qcow' in image_type:
         return mount_qcow(image_path, mount_point)
     raise Exception("The type of image "
-            "could not be determined by output of 'file'")
+                    "could not be determined by output of 'file'")
+
 
 def _detect_and_mount_image(image_path, mount_point):
     try:
@@ -475,7 +553,7 @@ def _detect_and_mount_image(image_path, mount_point):
     except Exception as no_metadata:
         pass
     #Resort to guessing based on file extension
-    file_name, file_ext= os.path.splitext(image_path)
+    file_name, file_ext = os.path.splitext(image_path)
     if file_ext == '.qcow' or file_ext == '.qcow2':
         return mount_qcow(image_path, mount_point)
     elif file_ext == '.raw' or file_ext == '.img':
@@ -484,13 +562,16 @@ def _detect_and_mount_image(image_path, mount_point):
         result = mount_raw(image_path, mount_point, attempt_qcow=True)
         return (result, None)
     raise Exception("The type of image "
-            "could not be determined based on the extension:%s" % file_ext)
+                    "could not be determined based on the extension:%s" %
+                    file_ext)
+
 
 def unmount_raw(block_device):
     #Remove net block device
     out, err = run_command(['umount', block_device])
     if err:
         return out, err
+
 
 def unmount_qcow(nbd_device):
     #Remove net block device
@@ -501,11 +582,12 @@ def unmount_qcow(nbd_device):
     if err:
         return out, err
 
+
 def remove_chroot_env(mount_point):
-    proc_dir = os.path.join(mount_point,'proc/')
-    sys_dir = os.path.join(mount_point,'sys/')
-    dev_dir = os.path.join(mount_point,'dev/')
-    etc_resolv_file = os.path.join(mount_point,'etc/resolv.conf')
+    proc_dir = os.path.join(mount_point, 'proc/')
+    sys_dir = os.path.join(mount_point, 'sys/')
+    dev_dir = os.path.join(mount_point, 'dev/')
+    etc_resolv_file = os.path.join(mount_point, 'etc/resolv.conf')
     run_command(['umount', '-lf', proc_dir], check_return=True)
     run_command(['umount', '-lf', sys_dir], check_return=True)
     run_command(['umount', '-lf', dev_dir], check_return=True)
@@ -513,14 +595,15 @@ def remove_chroot_env(mount_point):
 
 
 def prepare_chroot_env(mount_point):
-    proc_dir = os.path.join(mount_point,'proc/')
-    sys_dir = os.path.join(mount_point,'sys/')
-    dev_dir = os.path.join(mount_point,'dev/')
-    etc_resolv_file = os.path.join(mount_point,'etc/resolv.conf')
+    proc_dir = os.path.join(mount_point, 'proc/')
+    sys_dir = os.path.join(mount_point, 'sys/')
+    dev_dir = os.path.join(mount_point, 'dev/')
+    etc_resolv_file = os.path.join(mount_point, 'etc/resolv.conf')
     run_command(['mount', '-t', 'proc', '/proc', proc_dir])
     run_command(['mount', '-t', 'sysfs', '/sys', sys_dir])
-    run_command(['mount', '-o', 'bind', '/dev',  dev_dir])
+    run_command(['mount', '-o', 'bind', '/dev', dev_dir])
     run_command(['mount', '--bind', '/etc/resolv.conf', etc_resolv_file])
+
 
 def fsck_image(image_path):
     _, source_ext = os.path.splitext(image_path)
@@ -529,6 +612,7 @@ def fsck_image(image_path):
     else:
         return fsck_img(image_path)
 
+
 def fsck_img(image_path):
     loop_dev = _get_next_loop()
     try:
@@ -536,6 +620,7 @@ def fsck_img(image_path):
         run_command(['fsck', '-y', loop_dev])
     finally:
         run_command(['losetup', '-d', loop_dev])
+
 
 def fsck_qcow(image_path):
     """
@@ -577,7 +662,8 @@ def _init_xfs(partition_path):
     """
     Given an XFS partition, 'intialize' so its ready for a 'normal mount'
     """
-    run_command(['xfs_admin',partition_path])
+    run_command(['xfs_admin', partition_path])
+
 
 def mount_qcow(image_path, mount_point):
     nbd_dev = _get_next_nbd()
@@ -587,8 +673,8 @@ def mount_qcow(image_path, mount_point):
     #Check if filesystem has multiple partitions
     try:
         partition = _fdisk_get_partition(nbd_dev)
-        mount_from = partition.get('image_name',nbd_dev)
-        offset = int(partition.get('start',0)) *512
+        mount_from = partition.get('image_name', nbd_dev)
+        offset = int(partition.get('start', 0)) * 512
         fs_type = _get_parted_fs_type(mount_from)
     except Exception as e:
         logger.exception(e)
@@ -599,19 +685,23 @@ def mount_qcow(image_path, mount_point):
         _init_xfs(mount_from)
     mount_success = attempt_mount(mount_from, mount_point)
     if not mount_success:
-        mount_success = attempt_mount(nbd_dev, mount_point, "offset=%s,nouuid" % offset)
+        mount_success = attempt_mount(nbd_dev, mount_point,
+                                      "offset=%s,nouuid" % offset)
     if mount_success:
         return True, nbd_dev
     else:
-        logger.error('Could not mount QCOW image:%s to device:%s'
-                         % (image_path, nbd_dev))
+        logger.error('Could not mount QCOW image:%s to device:%s' %
+                     (image_path, nbd_dev))
         # Run only on complete mount failure.. We want to keep the image mounted!
         run_command(['qemu-nbd', '-d', nbd_dev])
         return False, None
 
+
 def attempt_mount(mount_from, mount_point, mount_options=None):
     if mount_options:
-        mount_cmd_list = ['mount', "-o %s" % mount_options, mount_from, mount_point]
+        mount_cmd_list = [
+            'mount', "-o %s" % mount_options, mount_from, mount_point
+        ]
     else:
         mount_cmd_list = ['mount', mount_from, mount_point]
     try:
@@ -620,12 +710,13 @@ def attempt_mount(mount_from, mount_point, mount_options=None):
             raise Exception("Failed to mount. STDERR: %s" % err)
         return True
     except:
-        logger.exception('Could not mount file:%s to device:%s using options: %s'
-                         % (mount_from, mount_point, mount_options))
+        logger.exception(
+            'Could not mount file:%s to device:%s using options: %s' %
+            (mount_from, mount_point, mount_options))
 
 
 def fdisk_image(image_path):
-    out, err = run_command(['fdisk','-l',image_path])
+    out, err = run_command(['fdisk', '-l', image_path])
     fdisk_stats = _parse_fdisk_stats(out)
     return fdisk_stats
 
@@ -642,7 +733,7 @@ def _get_next_loop():
     MAX_COUNT = 7
     while loop_count < MAX_COUNT:
         loop_dev = '%s%s' % (loop_name, loop_count)  # /dev/loop[0,1,2,...]
-        out, err = run_command(['losetup',loop_dev])
+        out, err = run_command(['losetup', loop_dev])
         if 'no such device' in err.lower():
             #No such device means the loop is empty, ready for use.
             return loop_dev
@@ -655,7 +746,7 @@ def _get_next_nbd():
     nbd_count = 1
     MAX_PART = 16
     while nbd_count < MAX_PART:
-        out, err = run_command(['fdisk','-l','%s%s' % (nbd_name, nbd_count)])
+        out, err = run_command(['fdisk', '-l', '%s%s' % (nbd_name, nbd_count)])
         if not out:
             #No output means the nbd is empty, ready for use.
             return '%s%s' % (nbd_name, nbd_count)
@@ -664,7 +755,7 @@ def _get_next_nbd():
 
 
 def mount_raw(image_path, mount_point, attempt_qcow=False):
-    out, err = run_command(['mount','-o','loop',image_path,mount_point])
+    out, err = run_command(['mount', '-o', 'loop', image_path, mount_point])
     logger.debug("Mount Output:%s\nMount Error:%s" % (out, err))
     if 'specify the filesystem' in err:
         try:
@@ -681,17 +772,20 @@ def mount_raw(image_path, mount_point, attempt_qcow=False):
     #Mount was successful, return True
     return True
 
+
 def mount_raw_with_offsets(image_path, mount_point):
     fdisk_stats = fdisk_image(image_path)
     if not fdisk_stats:
-        raise Exception("Cannot mount %s as a raw image. Is it a QCOW?" % image_path)
+        raise Exception("Cannot mount %s as a raw image. Is it a QCOW?" %
+                        image_path)
     partition = _select_partition(fdisk_stats['devices'])
     offset = fdisk_stats['disk']['unit_byte_size'] * partition['start']
-    out, err = run_command(['mount', '-o', 'loop,offset=%s' %  offset,
-                             image_path, mount_point])
+    out, err = run_command(
+        ['mount', '-o',
+         'loop,offset=%s' % offset, image_path, mount_point])
     if err:
         raise Exception("Could not auto-mount the RAW partition: %s" %
-                partition)
+                        partition)
     return out, err
 
 
@@ -730,7 +824,6 @@ def _parse_fdisk_stats(output):
         *heads, sectors, cylinders, sector_count, units, Sector Size, Start, End
     """
 
-
     DEVICE_LINE = 9
 
     if not output:
@@ -739,11 +832,10 @@ def _parse_fdisk_stats(output):
     lines = output.split('\n')
     #Going line-by-line here.. Line 2
     disk_map = {}
-    regex = re.compile(
-        "(?P<heads>[0-9]+) heads, "
-        "(?P<sectors_per_track>[0-9]+) sectors/track, "
-        "(?P<cylinders>[0-9]+) cylinders, "
-        "total (?P<sectors_total>[0-9]+) sectors")
+    regex = re.compile("(?P<heads>[0-9]+) heads, "
+                       "(?P<sectors_per_track>[0-9]+) sectors/track, "
+                       "(?P<cylinders>[0-9]+) cylinders, "
+                       "total (?P<sectors_total>[0-9]+) sectors")
     r = regex.search(lines[2])
     disk_map.update(r.groupdict())
     #Adding line 3
@@ -751,7 +843,9 @@ def _parse_fdisk_stats(output):
     r = regex.search(lines[3])
     disk_map.update(r.groupdict())
     #Adding line 4
-    regex = re.compile("(?P<logical_sector_size>[0-9]+) bytes / (?P<physical_sector_size>[0-9]+) bytes")
+    regex = re.compile(
+        "(?P<logical_sector_size>[0-9]+) bytes / (?P<physical_sector_size>[0-9]+) bytes"
+    )
     r = regex.search(lines[4])
     disk_map.update(r.groupdict())
     ## Map each device partition
@@ -768,16 +862,17 @@ def _parse_fdisk_stats(output):
         if r:
             device_stats = r.groupdict()
             if not device_stats.get('image_name'):
-                raise Exception("Regex failed to properly identify fdisk image. "
-                                "This problem must be fixed by hand!")
+                raise Exception(
+                    "Regex failed to properly identify fdisk image. "
+                    "This problem must be fixed by hand!")
             devices.append(device_stats)
         DEVICE_LINE += 1
     #Wrap-it-up
     fdisk_stats = {}
     _map_str_to_int(disk_map)
     [_map_str_to_int(dev) for dev in devices]
-    fdisk_stats.update({'disk':disk_map})
-    fdisk_stats.update({'devices':devices})
+    fdisk_stats.update({'disk': disk_map})
+    fdisk_stats.update({'devices': devices})
     return fdisk_stats
 
 
@@ -786,7 +881,7 @@ def _map_str_to_int(dictionary):
     Regex saves the variables as strings,
     but they are more useful as ints
     """
-    for (k,v) in dictionary.items():
+    for (k, v) in dictionary.items():
         if type(v) == str and v.isdigit():
             dictionary[k] = int(v)
     return dictionary

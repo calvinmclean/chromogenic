@@ -10,11 +10,13 @@ VERSION = (0, 5, 1, 'dev', 0)
 git_match = "(?P<git_flag>git://)\S*#egg="\
             "(?P<egg>[a-zA-Z0-9-]*[a-zA-Z])"\
             "(?P<opt_version_flag>-)?(?P<opt_version>[0-9][0-9.-]*[0-9])?(?P<dev_flag>-dev)?"
-            # Version is optional
+# Version is optional
 egg_match = "(?P<egg>\S.*[a-zA-Z])"\
             "(?P<opt_version_flag>[-=]+)?"\
             "(?P<opt_version>[0-9]*[0-9.-]*[0-9])?(?P<dev_flag>-dev)?"
-            # Version is optional
+
+
+# Version is optional
 def read_requirements(requirements_file):
     """
     Requirements files use two specific formats:
@@ -53,8 +55,9 @@ def read_requirements(requirements_file):
                 dependencies.append(line)
             #Requirements should be added for each line
             if group.get('opt_version') and group.get('egg'):
-                install_requires.append("%s==%s%s" % (group['egg'], group['opt_version'],
-                        '-dev' if group.get('dev_flag') else ''))
+                install_requires.append(
+                    "%s==%s%s" % (group['egg'], group['opt_version'],
+                                  '-dev' if group.get('dev_flag') else ''))
             elif group.get('egg'):
                 install_requires.append("%s" % (group['egg']))
     return (dependencies, install_requires)
@@ -62,7 +65,7 @@ def read_requirements(requirements_file):
 
 def write_requirements(requirements_file, new_file):
     (dependencies, install_requires) = read_requirements(requirements_file)
-    with open(new_file,'w') as write_to:
+    with open(new_file, 'w') as write_to:
         write_to.write("#Dependencies:\n")
         [write_to.write("%s\n" % line) for line in dependencies]
         write_to.write("#Requirements:\n")
@@ -73,12 +76,10 @@ def write_requirements(requirements_file, new_file):
 def git_sha():
     loc = abspath(dirname(__file__))
     try:
-        p = Popen(
-            "cd \"%s\" && git log -1 --format=format:%%h" % loc,
-            shell=True,
-            stdout=PIPE,
-            stderr=PIPE
-        )
+        p = Popen("cd \"%s\" && git log -1 --format=format:%%h" % loc,
+                  shell=True,
+                  stdout=PIPE,
+                  stderr=PIPE)
         return p.communicate()[0]
     except OSError:
         return None
@@ -123,4 +124,3 @@ def get_version(form='short'):
         return v
     if form is "all":
         return versions
-

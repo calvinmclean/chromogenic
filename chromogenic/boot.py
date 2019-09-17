@@ -4,6 +4,7 @@ from chromogenic.common import rebuild_ramdisk, run_command,\
                                    get_latest_ramdisk, fdisk_image
 from django.conf import settings
 
+
 def add_grub(mounted_path, image_path):
     """
     Defines the order of sub-functions needed to install
@@ -23,10 +24,9 @@ geometry (hd0) %s %s %s
 root (hd0,0)
 setup (hd0)
 quit""" % (image_path, disk['cylinders'], disk['heads'],
-        disk['sectors_per_track'])
-    run_command(
-        ['grub', '--device-map=/dev/null', '--batch'], 
-        stdin=grub_stdin)
+           disk['sectors_per_track'])
+    run_command(['grub', '--device-map=/dev/null', '--batch'],
+                stdin=grub_stdin)
 
 
 def _get_stage_files(root_dir, distro):
@@ -44,9 +44,18 @@ def _get_stage_files(root_dir, distro):
     enough to fit in the area immediately after MBR.
     """
     if distro == 'CentOS':
-        run_command(['/bin/bash','-c','cp -f %s/extras/export/grub_files/centos/* %s/boot/grub/' % (settings.PROJECT_ROOT, root_dir)])
+        run_command([
+            '/bin/bash', '-c',
+            'cp -f %s/extras/export/grub_files/centos/* %s/boot/grub/' %
+            (settings.PROJECT_ROOT, root_dir)
+        ])
     elif distro == 'Ubuntu':
-        run_command(['/bin/bash','-c','cp -f %s/extras/export/grub_files/ubuntu/* %s/boot/grub/' % (settings.PROJECT_ROOT, root_dir)])
+        run_command([
+            '/bin/bash', '-c',
+            'cp -f %s/extras/export/grub_files/ubuntu/* %s/boot/grub/' %
+            (settings.PROJECT_ROOT, root_dir)
+        ])
+
 
 def _rewrite_grub_conf(mount_point, distro):
 
@@ -61,11 +70,15 @@ title Atmosphere VM (%s)
     initrd /boot/%s
 """ % (rmdisk_version, rmdisk_version, latest_rmdisk)
 
-    with open(os.path.join(
-            mount_point,'boot/grub/grub.conf'), 'w') as grub_file:
+    with open(os.path.join(mount_point, 'boot/grub/grub.conf'),
+              'w') as grub_file:
         grub_file.write(new_grub_conf)
 
-    run_command(['/bin/bash','-c', 'cd %s/boot/grub/;ln -s grub.conf grub.cfg'
-                 % mount_point])
-    run_command(['/bin/bash','-c', 'cd %s/boot/grub/;ln -s grub.conf menu.lst'
-                 % mount_point])
+    run_command([
+        '/bin/bash', '-c',
+        'cd %s/boot/grub/;ln -s grub.conf grub.cfg' % mount_point
+    ])
+    run_command([
+        '/bin/bash', '-c',
+        'cd %s/boot/grub/;ln -s grub.conf menu.lst' % mount_point
+    ])
