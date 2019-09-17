@@ -37,7 +37,7 @@ def run_command(commandList, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         logger.info("Completed Command with exit code %s: %s" % (return_code, cmd_str))
         if check_return and return_code != 0:
                 raise Exception("Command returned a non-zero exit code (%s) : %s " % (return_code, cmd_str))
-    except Exception, e:
+    except Exception as e:
         logger.exception("Failed command: %s" % cmd_str)
         logger.exception(e)
         raise
@@ -49,7 +49,7 @@ def run_command(commandList, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             logger.debug("%s STDIN: %s" % (cmd_str, stdin))
         logger.debug("%s STDOUT: %s" % (cmd_str, out))
         logger.debug("%s STDERR: %s" % (cmd_str, err))
-    except Exception, e:
+    except Exception as e:
         logger.exception(e)
 
     return (out,err)
@@ -472,7 +472,7 @@ def _mount_by_file_metadata(image_path, mount_point):
 def _detect_and_mount_image(image_path, mount_point):
     try:
         return _mount_by_file_metadata(image_path, mount_point)
-    except Exception, no_metadata:
+    except Exception as no_metadata:
         pass
     #Resort to guessing based on file extension
     file_name, file_ext= os.path.splitext(image_path)

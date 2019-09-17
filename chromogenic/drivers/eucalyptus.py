@@ -341,7 +341,7 @@ class ImageManager(BaseDriver):
                     attribute='launchPermission',
                     operation='add',
                     user_ids=private_user_list)
-            except EC2ResponseError, call_failed:
+            except EC2ResponseError as call_failed:
                 #Since Euca ignores this anyway, lets just continue.
                 logger.error("Private List - %s" % private_user_list)
                 logger.exception(call_failed)
@@ -779,7 +779,7 @@ class ImageManager(BaseDriver):
                              % (filename, bucket_name, keyname))
                 k.set_contents_from_file(the_file, policy=canned_acl)
                 logger.debug("File Upload complete")
-            except S3ResponseError, s3error:
+            except S3ResponseError as s3error:
                 s3error_string = '%s' % (s3error)
                 if s3error_string.find("403") >= 0:
                     logger.exception("Permission denied while writing : %s\n%s"
@@ -844,7 +844,7 @@ class ImageManager(BaseDriver):
             image_id = euca_conn.register_image(
                 image_location=s3_manifest_path)
             return image_id
-        except Exception, ex:
+        except Exception as ex:
             logger.error(ex)
             self.euca.display_error_and_exit('%s' % ex)
 
@@ -1052,7 +1052,7 @@ def _ensure_bucket(connection, bucket, canned_acl=None):
     try:
         logger.info('Checking bucket: %s' % bucket)
         bucket_instance = connection.get_bucket(bucket)
-    except S3ResponseError, s3error:
+    except S3ResponseError as s3error:
         s3error_string = '%s' % (s3error)
         if (s3error_string.find("404") >= 0):
             try:
@@ -1081,7 +1081,7 @@ def _upload_manifest(bucket_instance, manifest_filename, canned_acl=None):
     manifest_file = open(manifest_filename, "rb")
     try:
         k.set_contents_from_file(manifest_file, policy=canned_acl)
-    except S3ResponseError, s3error:
+    except S3ResponseError as s3error:
         s3error_string = '%s' % (s3error)
         if (s3error_string.find("403") >= 0):
             logger.error("Permission denied while writing: %s" % k.key)
@@ -1107,7 +1107,7 @@ def _upload_parts(bucket_instance, directory, parts,
             part_file = open(os.path.join(directory, part), "rb")
             try:
                 k.set_contents_from_file(part_file, policy=canned_acl)
-            except S3ResponseError, s3error:
+            except S3ResponseError as s3error:
                 s3error_string = '%s' % (s3error)
                 if (s3error_string.find("403") >= 0):
                     logger.info("Permission denied while writing: %s" % k.key)
